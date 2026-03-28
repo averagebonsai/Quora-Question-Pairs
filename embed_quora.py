@@ -39,11 +39,11 @@ N = len(sorted_ids)
 print(f"[INFO] Unique questions: {N}", flush=True)
 
 # Load model
-print(f"[INFO] Loading model: {MODEL_NAME} (Flash Attention 2)", flush=True)
+print(f"[INFO] Loading model: {MODEL_NAME} (SDPA)", flush=True)
 model = SentenceTransformer(
     MODEL_NAME,
     model_kwargs={
-        "attn_implementation": "flash_attention_2"
+        "attn_implementation": "sdpa"
     },
 )
 dim = model.get_sentence_embedding_dimension()
