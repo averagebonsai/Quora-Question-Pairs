@@ -66,8 +66,7 @@ Look up a question by ID with `np.searchsorted(store["ids"], qid)`.
 | Script | What it does |
 |--------|-------------|
 | `embed_quora.py` | Downloads the Quora dataset via `kagglehub`, embeds every unique question with Qwen3-Embedding-4B (SDPA, batches of 128), and writes the result to `embeddings.zarr`. Logs progress every 30 s. |
-| `thresholding.py` | Loads `embeddings.zarr`, builds a 22-feature pairwise feature matrix (embedding distances + lexical features), then evaluates a cosine baseline and trains a **Logistic Regression** classifier. Reports accuracy, precision, recall, F1, and the strongest coefficients. |
-| `catboost_thresh.py` | Same feature pipeline as `thresholding.py` but adds a **CatBoost** classifier (500 iterations, depth 8). Compares cosine baseline → logistic regression → CatBoost, prints feature importances, and optionally saves misclassified test pairs to `catboost_test_errors.csv`. |
+| `catboost_thresh.py` | Loads `embeddings.zarr`, builds a 22-feature pairwise feature matrix (embedding distances + lexical features), then compares a cosine baseline and a **Logistic Regression** against a **CatBoost** classifier (500 iterations, depth 8). Prints feature importances and optionally saves misclassified test pairs to `catboost_test_errors.csv`. |
 
 ---
 
@@ -107,7 +106,7 @@ sbatch slurmscript.sh
 # Output: embed_<jobid>.log / embed_<jobid>.err
 ```
 
-To run the classifiers interactively or as a batch job, adapt `slurmscript.sh` — replace `embed_quora.py` with `thresholding.py` or `catboost_thresh.py` as needed. The classifier scripts are CPU-only and do not require a GPU partition.
+To run the classifiers interactively or as a batch job, adapt `slurmscript.sh` — replace `embed_quora.py` with `catboost_thresh.py` as needed. The classifier script is CPU-only and does not require a GPU partition.
 
 ---
 
@@ -116,8 +115,7 @@ To run the classifiers interactively or as a batch job, adapt `slurmscript.sh` �
 ```
 .
 ├── embed_quora.py          # Embedding pipeline
-├── thresholding.py         # Logistic regression classifier
-├── catboost_thresh.py      # CatBoost classifier
+├── catboost_thresh.py      # CatBoost classifier (+ logistic regression baseline)
 ├── embeddings.zarr.dvc     # DVC pointer to the Zarr store
 ├── slurmscript.sh          # Slurm job script (embedding)
 ├── pyproject.toml
