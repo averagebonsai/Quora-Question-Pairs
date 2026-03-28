@@ -4,9 +4,9 @@
 #SBATCH --error=embed_%j.err
 #SBATCH --time=02:00:00
 #SBATCH --partition=gpu
-#SBATCH --mem=256G
-#SBATCH --cpus-per-task=32
-#SBATCH --gpus=h200-141:4
+#SBATCH --mem=64G
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus=h200-141:1
 
 cd ~/Quora-Question-Pairs
 
