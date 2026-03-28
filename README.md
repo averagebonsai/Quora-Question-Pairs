@@ -17,8 +17,13 @@ Installing uv is easy and painless:
 ```bash
 # Download and install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# Install dependencies
-uv sync
+```
+Then, when you run a script, uv will automatically download and set up the necessary virtual environments. Never worry about venvs ever again!
+
+You run a script with 
+
+```bash
+uv run <script_name.py>
 ```
 
 *Dependencies include `torch` (CUDA 12.6 wheel on Linux), `sentence-transformers`, `catboost`, `zarr`, `dvc[s3]`, and `scikit-learn`. See `pyproject.toml` for the full list.*
@@ -27,7 +32,9 @@ uv sync
 
 ## Getting the Embeddings (DVC)
 
-The pre-computed `embeddings.zarr` store (~3.7 GB, 18 k files) is tracked with DVC. The DVC remote config files will be shared separately.
+The pre-computed `embeddings.zarr` store (~3.7 GB, 18 k files) is tracked with DVC. The DVC remote config files will be shared separately. If you want to just get the embeddings, the same applies to you too!
+
+All you have to do is:
 
 ```bash
 # Place the provided .dvc/config (and credentials) in the repo, then:
@@ -35,19 +42,9 @@ uv run dvc pull
 ```
 
 This pulls `embeddings.zarr` from the configured remote. There is no need to re-run `embed_quora.py` unless you want to regenerate the embeddings.
+Once the pull finishes, `embeddings.zarr/` will be present and ready to use.
 
-### Quick start — just get the data
-
-If you only want to pull the embeddings without setting up the full Python environment, you can use `uv run` which handles the virtualenv automatically. After cloning the repo, simply:
-
-1. Place the provided `.dvc/config` and `.dvc/config.local` (credentials) files into the `.dvc/` directory.
-2. Run:
-
-```bash
-uv run dvc pull embeddings.zarr
-```
-
-`uv` will install DVC into an isolated environment on first run. Once the pull finishes, `embeddings.zarr/` will be present and ready to use.
+`embeddings.zarr` is necessary for the other scripts that rely on this to function.
 
 ### Zarr store layout
 
@@ -71,11 +68,12 @@ Look up a question by ID with `np.searchsorted(store["ids"], qid)`.
 ---
 
 ## Running on the NUS SOC Cluster (Slurm)
+*Follow this to do what I did!*
 
-I would recommend you to use this link to figure it out:
+I mainly figured things out using this link:
 https://www.comp.nus.edu.sg/~cs3210/student-guide/accessing/
 
-But the basic sequence of events are:
+The basic sequence of events are:
 1. Create a SOC account from https://mysoc.nus.edu.sg/~newacct
 2. Turn on The SOC Compute Cluster here: https://mysoc.nus.edu.sg/~myacct/services.cgi
 3. Get the Forticlient VPN and connect to it
@@ -93,7 +91,7 @@ cd Quora-Question-Pairs
 uv sync
 ```
 
-Pull the embeddings with DVC (place the provided config files first):
+Pull the embeddings with DVC (place the provided config files first - you may copy files over using `cp`):
 
 ```bash
 uv run dvc pull
