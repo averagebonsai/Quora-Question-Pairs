@@ -166,13 +166,14 @@ All new model experiments live in `experiments/`. The key idea is that **model l
 embeddings.zarr  ──►  data.py  ──►  model.build_features()  ──►  run_experiment.py  ──►  report.py
                       (loads)        (each model picks its          (fixed pipeline:        (metrics.txt
                                       own feature set from           split → fit →           errors.csv
-                                      features.py primitives)        predict)                all_experiments.csv)
+                                      features.py primitives)        predict)                config.json
+                                                                                            all_experiments.csv)
 ```
 
 - **`data.py`** — loads the zarr store + CSV into a list of `PairRecord` objects. No model logic here.
 - **`features.py`** — pure feature functions (`embedding_features`, `lexical_features`, `all_features`, `matryoshka_embedding_features`, `matryoshka_all_features`). Each returns a `dict[str, float]` per pair. Models import whatever they need.
-- **`models/<name>.py`** — each model owns its feature selection and any internal pre-processing (e.g. `StandardScaler` in `logreg_model.py`). Every model exposes three methods: `build_features()`, `fit()`, and `predict_proba()`.
-- **`run_experiment.py`** — the fixed pipeline entry point. Change 3 lines to swap models.
+- **`models/<name>.py`** — each model owns its feature selection and any internal pre-processing (e.g. `StandardScaler` in `logreg_model.py`). Every model exposes three methods: `build_features()`, `fit()`, and `predict_proba()`. Optionally `feature_importances()` and `get_config()`.
+- **`run_experiment.py`** — the fixed pipeline entry point; model and experiment name are passed as CLI arguments.
 - **`report.py`** — takes predictions and writes the full report (see below).
 
 ### Fixed split — fair comparison
@@ -183,18 +184,12 @@ The first run saves `experiments/splits/default_split.npz`. Every subsequent run
 
 ```bash
 cd experiments
-uv run run_experiment.py
+python run_experiment.py --model catboost --name catboost_matryoshka_all_features
 ```
 
-To switch to a different model, edit the three lines in the `EXPERIMENT CONFIG` block at the top of `run_experiment.py`:
+Available `--model` values: `xgboost`, `catboost`, `logreg`, `cosine`
 
-```python
-from models.logreg_model import LogRegModel   # ← swap
-MODEL = LogRegModel()                          # ← swap
-EXPERIMENT_NAME = "logreg_all_features"        # ← unique name
-```
-
-For quick smoke-tests, set `MAX_ROWS = 50_000` in the same file.
+For quick smoke-tests, add `--max-rows 50000`. Other useful flags: `--threshold`, `--test-size`, `--zarr`, `--split-file`, `--results-dir`. See `experiments/README.md` for the full flag reference.
 
 ### Report output
 
@@ -206,6 +201,8 @@ experiments/results/
 └── <experiment_name>/
     ├── metrics.txt                   ← full metrics block + classification report
     ├── errors.csv                    ← every FP and FN with question text and predicted probability
+    ├── config.json                   ← full reproducibility record: CLI args, model class,
+    │                                    matryoshka_dims, hyperparams, and ordered feature list
     └── feature_importance.txt        ← ranked feature importances (if the model supports it)
 ```
 
@@ -213,8 +210,10 @@ experiments/results/
 
 1. Create `experiments/models/my_model.py` — copy any existing model as a template.
 2. Implement `build_features(records)`, `fit(X_train, y_train)`, and `predict_proba(X_test)`.
-3. Optionally implement `feature_importances() → dict[str, float]` for automatic importance reporting.
-4. Import and instantiate it in `run_experiment.py`.
+3. Optionally implement:
+   - `feature_importances() → dict[str, float]` for automatic importance reporting.
+   - `get_config() → dict` so `config.json` captures your model's full hyperparameters and feature list.
+4. Register it in `experiments/models/__init__.py` and add an entry to `MODEL_REGISTRY` in `run_experiment.py`.
 
 ### Adding a new feature set
 

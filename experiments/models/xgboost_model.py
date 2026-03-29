@@ -17,7 +17,7 @@ from xgboost import XGBClassifier
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from data import PairRecord
-from features import build_matrix, matryoshka_all_features
+from features import build_matrix, matryoshka_all_features, DEFAULT_MATRYOSHKA_DIMS
 
 
 _DEFAULTS = dict(
@@ -48,6 +48,7 @@ class XGBoostModel:
         params = {**_DEFAULTS, **kwargs}
         self._model = XGBClassifier(**params)
         self._dims = matryoshka_dims
+        self._params = params
         self._feature_names: list[str] = []
 
     @property
@@ -87,3 +88,17 @@ class XGBoostModel:
     def feature_importances(self) -> dict[str, float]:
         importances = self._model.feature_importances_
         return dict(zip(self._feature_names, importances.tolist()))
+
+    def get_config(self) -> dict:
+        """
+        Return a serialisable dict describing this model's full configuration.
+        Consumed by report.py to write config.json alongside other artefacts.
+        """
+        dims_used = list(self._dims) if self._dims is not None else list(DEFAULT_MATRYOSHKA_DIMS)
+        return {
+            "model_class": "XGBoostModel",
+            "matryoshka_dims": dims_used,
+            "hyperparams": {k: v for k, v in self._params.items()},
+            "n_features": len(self._feature_names),
+            "feature_names": self._feature_names,
+        }

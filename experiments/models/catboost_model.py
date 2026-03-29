@@ -1,8 +1,12 @@
 """
-models/catboost_model.py — CatBoost classifier.
+models/catboost_model.py — CatBoost classifier with matryoshka-sliced features.
 
-Feature set: all embedding features + all lexical features (22 total).
-No scaling required (tree-based model).
+Feature set (mirrors XGBoostModel):
+  - Matryoshka prefix-slice embedding statistics
+  - Lexical overlap / length features
+
+Pass ``matryoshka_dims`` to control which prefix slices are used.
+Omit it (or pass None) to use the library default defined in features.py.
 """
 
 from __future__ import annotations
@@ -14,7 +18,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from data import PairRecord
-from features import all_features, build_matrix
+from features import build_matrix, matryoshka_all_features, DEFAULT_MATRYOSHKA_DIMS
 
 
 # Default hyper-parameters — override by subclassing or passing kwargs to __init__
@@ -39,23 +43,33 @@ class CatBoostModel:
     fit(X_train, y_train)
     predict_proba(X_test)    → 1-D array of positive-class probabilities
     feature_importances()    → dict[feature_name, importance]  (optional)
+    get_config()             → dict  (hyperparams + feature config)
     """
 
     name = "CatBoost"
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        matryoshka_dims: tuple[int, ...] | None = None,
+        **kwargs,
+    ):
         params = {**_DEFAULTS, **kwargs}
         self._model = CatBoostClassifier(**params)
+        self._dims = matryoshka_dims
+        self._params = params
         self._feature_names: list[str] = []
+
+    @property
+    def matryoshka_dims(self) -> tuple[int, ...] | None:
+        return self._dims
 
     # ------------------------------------------------------------------
     # Feature assembly
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _feature_fn(r: PairRecord) -> dict[str, float]:
-        """All embedding + lexical features (same as original script)."""
-        return all_features(r)
+    def _feature_fn(self, r: PairRecord) -> dict[str, float]:
+        """Matryoshka-sliced embedding features + lexical features."""
+        return matryoshka_all_features(r, dims=self._dims)
 
     def build_features(
         self, records: list[PairRecord]
@@ -92,3 +106,17 @@ class CatBoostModel:
         """Returns a name → importance mapping (only valid after fit)."""
         importances = self._model.get_feature_importance()
         return dict(zip(self._feature_names, importances.tolist()))
+
+    def get_config(self) -> dict:
+        """
+        Return a serialisable dict describing this model's full configuration.
+        Consumed by report.py to write config.json alongside other artefacts.
+        """
+        dims_used = list(self._dims) if self._dims is not None else list(DEFAULT_MATRYOSHKA_DIMS)
+        return {
+            "model_class": "CatBoostModel",
+            "matryoshka_dims": dims_used,
+            "hyperparams": {k: v for k, v in self._params.items()},
+            "n_features": len(self._feature_names),
+            "feature_names": self._feature_names,
+        }

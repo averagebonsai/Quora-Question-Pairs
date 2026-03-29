@@ -14,6 +14,7 @@ Call generate_report(…) from run_experiment.py after predicting.
 from __future__ import annotations
 
 import csv
+import json
 import os
 from datetime import datetime
 
@@ -100,6 +101,7 @@ def generate_report(
     model,
     threshold: float = 0.5,
     results_dir: str = RESULTS_DIR,
+    cli_args: dict | None = None,
 ) -> dict:
     """
     Generate and persist a full experiment report.
@@ -112,9 +114,11 @@ def generate_report(
     test_records    : PairRecord list for the test split (same order as y_true)
     feature_names   : list of feature column names
     model           : the fitted model object — used to get .name and optionally
-                      .feature_importances()
+                      .feature_importances() and .get_config()
     threshold       : decision threshold (default 0.5; CosineBaseline uses 0.76)
     results_dir     : root folder for all results (default "results/")
+    cli_args        : optional dict of CLI arguments passed to run_experiment.py;
+                      included verbatim in config.json for full reproducibility.
 
     Returns
     -------
@@ -175,7 +179,36 @@ def generate_report(
     print(f"[report] Wrote {errors_path}  ({n_errors} errors)", flush=True)
 
     # ------------------------------------------------------------------
-    # 4. Write feature_importance.txt  (optional)
+    # 4. Write config.json  (always)
+    # ------------------------------------------------------------------
+    config: dict = {
+        "experiment_name": experiment_name,
+        "run_at": run_at,
+        "model": model_name,
+        "threshold": threshold,
+        "test_size": int(len(y_true)),
+        "cli_args": cli_args or {},
+    }
+    # Merge model-level config if the model exposes get_config()
+    if hasattr(model, "get_config"):
+        try:
+            config["model_config"] = model.get_config()
+        except Exception as exc:
+            config["model_config"] = {"error": str(exc)}
+    else:
+        # Fallback: at least record the feature names
+        config["model_config"] = {
+            "n_features": len(feature_names),
+            "feature_names": feature_names,
+        }
+
+    config_path = os.path.join(exp_dir, "config.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+    print(f"[report] Wrote {config_path}", flush=True)
+
+    # ------------------------------------------------------------------
+    # 5. Write feature_importance.txt  (optional)
     # ------------------------------------------------------------------
     if hasattr(model, "feature_importances"):
         try:
@@ -193,7 +226,7 @@ def generate_report(
             print(f"[report] Could not write feature importances: {exc}", flush=True)
 
     # ------------------------------------------------------------------
-    # 5. Append to all_experiments.csv
+    # 6. Append to all_experiments.csv
     # ------------------------------------------------------------------
     summary_path = os.path.join(results_dir, "all_experiments.csv")
     write_header = not os.path.exists(summary_path)

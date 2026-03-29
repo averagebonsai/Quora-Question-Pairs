@@ -242,6 +242,16 @@ def run(args: argparse.Namespace) -> None:
     # 6. Report
     # ------------------------------------------------------------------
     print(f"\n[run] Generating report...", flush=True)
+    cli_args_dict = {
+        "model":       args.model,
+        "name":        args.name,
+        "max_rows":    args.max_rows,
+        "test_size":   args.test_size,
+        "threshold":   args.threshold,
+        "zarr":        zarr_path,
+        "split_file":  split_file,
+        "results_dir": results_dir,
+    }
     generate_report(
         experiment_name=experiment_name,
         y_true=y_test,
@@ -251,6 +261,7 @@ def run(args: argparse.Namespace) -> None:
         model=model,
         threshold=threshold,
         results_dir=results_dir,
+        cli_args=cli_args_dict,
     )
 
     print(f"\n[run] Total wall time: {time.time() - t0:.1f}s", flush=True)
