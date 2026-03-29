@@ -38,7 +38,16 @@ case "$MODE" in
 esac
 
 sbatch \
+    --parsable \
     --job-name="$JOB_NAME" \
     --output="logs/${JOB_NAME}_%j.log" \
     --error="logs/${JOB_NAME}_%j.err" \
-    "$SLURM_SCRIPT" "$SCRIPT" $EXTRA_ARGS
+    "$SLURM_SCRIPT" "$SCRIPT" $EXTRA_ARGS \
+    | {
+        read -r SBATCH_OUTPUT
+        JOB_ID="${SBATCH_OUTPUT%%;*}"
+
+        echo "Submitted batch job ${JOB_ID}"
+        echo "Watch logs with:"
+        echo "  tail -f logs/${JOB_NAME}_${JOB_ID}.log logs/${JOB_NAME}_${JOB_ID}.err"
+    }
