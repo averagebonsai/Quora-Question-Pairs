@@ -181,15 +181,21 @@ embeddings.zarr  ──►  data.py  ──►  model.build_features()  ──�
 The first run saves `experiments/splits/default_split.npz`. Every subsequent run loads those exact train/test indices. All models are therefore evaluated on **identical test rows**, making comparisons meaningful.
 
 ### Running an experiment
+You should be doing them through SLURM with the submit.sh script, but if you want to do it locally:
 
 ```bash
 cd experiments
-python run_experiment.py --model catboost --name catboost_matryoshka_all_features
+uv run python run_experiment.py --model catboost --name catboost_matryoshka_all_features
+
+# Optional: auto-push tracked experiment artifacts after a successful run
+uv run python run_experiment.py --model catboost --name catboost_matryoshka_all_features --dvc-push
 ```
 
 Available `--model` values: `xgboost`, `catboost`, `logreg`, `cosine`
 
 For quick smoke-tests, add `--max-rows 50000`. Other useful flags: `--threshold`, `--test-size`, `--zarr`, `--split-file`, `--results-dir`. See `experiments/README.md` for the full flag reference.
+
+`--dvc-push` is opt-in so collaborators without DVC write credentials can still run experiments normally.
 
 ### Report output
 

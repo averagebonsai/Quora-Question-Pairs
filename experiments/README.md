@@ -31,9 +31,14 @@ experiments/
 
 ## Running an experiment
 
+You might probably want to use the submit.sh script here, but if you don't want to use SLURM:
+
 ```bash
 cd experiments
-python run_experiment.py --model catboost --name catboost_matryoshka_all_features
+uv run python run_experiment.py --model catboost --name catboost_matryoshka_all_features
+
+# Optional: auto-push tracked results to DVC remote after a successful run
+uv run python run_experiment.py --model catboost --name catboost_matryoshka_all_features --dvc-push
 ```
 
 Available `--model` values: `xgboost`, `catboost`, `logreg`, `cosine`
@@ -54,6 +59,11 @@ compared on the **same test rows**.
 | `--zarr` | `../embeddings.zarr` | Path to embeddings store |
 | `--split-file` | `splits/default_split.npz` | Path to saved split indices |
 | `--results-dir` | `results/` | Output root directory |
+| `--dvc-push` | off | After report generation, run `uv run dvc push experiments/results` |
+| `--dvc-push-target` | `experiments/results` | DVC target path to push when `--dvc-push` is enabled |
+
+> `--dvc-push` is intentionally opt-in. This avoids failing local experiments for users
+> who only have read-only DVC access or no write credentials to the remote.
 
 ## Feature sets
 

@@ -17,6 +17,8 @@ Optional flags:
     --zarr       PATH   Path to embeddings.zarr (default: ../embeddings.zarr)
     --split-file PATH   Path to .npz split file (default: splits/default_split.npz)
     --results-dir PATH  Where to write reports (default: results/)
+    --dvc-push          If set, runs `uv run dvc push experiments/results` after reporting
+    --dvc-push-target   DVC target path to push (default: experiments/results)
 
 The split indices are saved to splits/default_split.npz on the first run
 and reused identically on every subsequent run, guaranteeing that all
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 
@@ -117,6 +120,20 @@ def parse_args() -> argparse.Namespace:
         metavar="PATH",
         help="Directory where reports are written.",
     )
+    parser.add_argument(
+        "--dvc-push",
+        action="store_true",
+        help=(
+            "After a successful run, execute `uv run dvc push experiments/results` "
+            "from the repository root."
+        ),
+    )
+    parser.add_argument(
+        "--dvc-push-target",
+        default="experiments/results",
+        metavar="PATH",
+        help="DVC target path to push when --dvc-push is enabled.",
+    )
     return parser.parse_args()
 
 
@@ -176,6 +193,17 @@ def _get_split(
         flush=True,
     )
     return train_idx, test_idx
+
+
+def _maybe_dvc_push(*, enabled: bool, script_dir: str, target: str) -> None:
+    if not enabled:
+        return
+
+    repo_root = os.path.abspath(os.path.join(script_dir, ".."))
+    cmd = ["uv", "run", "dvc", "push", target]
+    print(f"\n[dvc] Running: {' '.join(cmd)} (cwd={repo_root})", flush=True)
+    subprocess.run(cmd, cwd=repo_root, check=True)
+    print("[dvc] Push complete.", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +279,8 @@ def run(args: argparse.Namespace) -> None:
         "zarr":        zarr_path,
         "split_file":  split_file,
         "results_dir": results_dir,
+        "dvc_push":    args.dvc_push,
+        "dvc_push_target": args.dvc_push_target,
     }
     generate_report(
         experiment_name=experiment_name,
@@ -262,6 +292,12 @@ def run(args: argparse.Namespace) -> None:
         threshold=threshold,
         results_dir=results_dir,
         cli_args=cli_args_dict,
+    )
+
+    _maybe_dvc_push(
+        enabled=args.dvc_push,
+        script_dir=script_dir,
+        target=args.dvc_push_target,
     )
 
     print(f"\n[run] Total wall time: {time.time() - t0:.1f}s", flush=True)
