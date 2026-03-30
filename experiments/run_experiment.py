@@ -60,7 +60,7 @@ MODEL_REGISTRY: dict[str, object] = {
     "logreg":   LogRegModel(),
     "cosine":   CosineBaseline(),
     "randforest": RandomForestModel(),
-    "randoforesttopk": RandomForestTopKModel()
+    "randforesttopk": RandomForestTopKModel()
 }
 
 # ---------------------------------------------------------------------------
